@@ -34,27 +34,58 @@ function inlineBuild() {
   
   // Inline scripts
   html = html.replace(scriptRegex, (match, src) => {
-    // Handle relative paths
-    const scriptPath = path.join(distDir, src.startsWith('/') ? src.slice(1) : src);
+    // Skip external URLs (http://, https://, //)
+    if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('//')) {
+      return match; // Keep external scripts as-is
+    }
+    
+    // Handle relative paths - remove leading slash if present
+    const cleanSrc = src.startsWith('/') ? src.slice(1) : src;
+    const scriptPath = path.join(distDir, cleanSrc);
+    
     if (fs.existsSync(scriptPath)) {
       const scriptContent = fs.readFileSync(scriptPath, 'utf8');
-      // Remove type="module" if present, as we're inlining
-      const scriptTag = match.replace(/type=["']module["']/gi, '').replace(/src=["'][^"']+["']/, '');
+      // Keep type="module" for ES modules, remove crossorigin and src attributes
+      let scriptTag = match
+        .replace(/crossorigin[^>]*/gi, '')
+        .replace(/src=["'][^"']+["']/, '');
+      
+      // Ensure we have a proper script tag
+      if (!scriptTag.includes('<script')) {
+        scriptTag = '<script' + scriptTag;
+      }
+      
+      // If it was a module script, keep it as module
+      const wasModule = /type=["']module["']/gi.test(match);
+      if (!wasModule && !scriptTag.includes('type=')) {
+        scriptTag = scriptTag.replace('<script', '<script type="module"');
+      }
+      
       return scriptTag.replace('></script>', `>${scriptContent}</script>`);
     }
     console.warn(`Warning: Script not found: ${scriptPath}`);
     return match;
   });
   
-  // Inline stylesheets
+  // Inline stylesheets - remove non-existent CSS files
   html = html.replace(linkRegex, (match, href) => {
+    // Skip external URLs
+    if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('//')) {
+      return match; // Keep external stylesheets as-is
+    }
+    
     if (href.endsWith('.css')) {
-      const cssPath = path.join(distDir, href.startsWith('/') ? href.slice(1) : href);
+      const cleanHref = href.startsWith('/') ? href.slice(1) : href;
+      const cssPath = path.join(distDir, cleanHref);
+      
       if (fs.existsSync(cssPath)) {
         const cssContent = fs.readFileSync(cssPath, 'utf8');
         return `<style>${cssContent}</style>`;
+      } else {
+        // Remove the link tag if CSS file doesn't exist
+        console.warn(`Warning: CSS not found: ${cssPath} - removing link tag`);
+        return '';
       }
-      console.warn(`Warning: CSS not found: ${cssPath}`);
     }
     return match;
   });
