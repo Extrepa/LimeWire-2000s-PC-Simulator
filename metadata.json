@@ -1,0 +1,8 @@
+{
+  "name": "Windows XP & LimeWire Simulator Pro v2.7",
+  "description": "The definitive 2005 Nostalgia Simulator. v2.7 Stability Suite: Comprehensive validation of all 30+ modules. Adds 'System Health' monitor to msinfo32, standardized touch-dragging across all legacy and new windows, and fixed taskbar label inconsistencies for HyperCam and Disk Cleanup.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
